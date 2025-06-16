@@ -21,9 +21,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Accept licenses
-        run: yes | "C:\Users\admin\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat" --licenses
-        shell: cmd
+      - name: Accept Android SDK Licenses
+        shell: powershell
+        run: |
+           $sdkManager = "C:\Users\admin\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat"
+           echo "Accepting all SDK licenses..."
+           Start-Process -FilePath $sdkManager -ArgumentList "--licenses" -NoNewWindow -Wait
 
       - name: Install SDK components
         run: |
