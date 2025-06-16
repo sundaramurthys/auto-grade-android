@@ -1,25 +1,62 @@
-name: Android CI
+name: Android CI 
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  android-instrumented-tests:
+  android-tests:
+    name: Run Android Tests (Windows)
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Java
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Java (Windows)
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Grant gradlew permission
-        run: chmod +x ./gradlew
+
+      - name: Accept licenses
+        run: yes | "C:\Users\admin\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat" --licenses
+        shell: cmd
+
+      - name: Install SDK components
+        run: |
+          "C:\Users\admin\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat" "platform-tools" "platforms;android-34" "system-images;android-34;google_apis;x86_64" "emulator"
+        shell: cmd
+
+      - name: Create AVD
+        run: echo no | "C:\Users\admin\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\avdmanager.bat" create avd -n test -k "system-images;android-34;google_apis;x86_64" --device "pixel_5"
+        shell: cmd
+
+      - name: Start Emulator
+        run: |
+          start /B "" "C:\Users\admin\AppData\Local\Android\Sdk\emulator\emulator.exe" -avd test -no-audio -no-boot-anim -no-window -gpu swiftshader_indirect
+          timeout /t 60
+          "C:\Users\admin\AppData\Local\Android\Sdk\platform-tools\adb.exe" wait-for-device
+          "C:\Users\admin\AppData\Local\Android\Sdk\platform-tools\adb.exe" shell "while [[ -z \$(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82"
+        shell: cmd
+
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
-      - name: Run Tests
-        run: ./gradlew testDebugUnitTest
+        run: .\gradlew.bat assembleDebug
+
+      - name: Run Instrumented Tests
+        run: .\gradlew.bat connectedDebugAndroidTest
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: androidTest-results
+          path: app\build\reports\androidTests\connected\
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: app\build\outputs\apk\debug\*.apk
