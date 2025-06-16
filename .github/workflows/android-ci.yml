@@ -11,14 +11,14 @@ on:
 
 jobs:
   android-instrumented-tests:
-    name: Run Instrumented Tests
+    name: Run Instrumented Tests with Grading
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
@@ -27,31 +27,33 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Grant gradlew execute permission
+      - name: Grant execute permission to gradlew
         run: chmod +x ./gradlew
 
-      - name: Accept licenses
+      - name: Accept SDK Licenses
         run: yes | sdkmanager --licenses
 
-      - name: Install emulator and system image
+      - name: Install required SDK components
         run: sdkmanager "platform-tools" "platforms;android-34" "system-images;android-34;google_apis;x86_64" "emulator"
 
-      - name: Create AVD
-        run: echo "no" | avdmanager create avd -n test -k "system-images;android-34;google_apis;x86_64" --device "pixel_5"
+      - name: Create AVD named test
+        run: echo "no" | avdmanager create avd -n test -k "system-images;android-34;google_apis;x86_64" --device "pixel"
 
-      - name: Start Emulator
+      - name: Start emulator in background
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-boot-anim -no-window -gpu swiftshader_indirect -accel off > emulator.log 2>&1 &
-          echo "Waiting for emulator to boot..."
-          $ANDROID_HOME/platform-tools/adb wait-for-device
-          boot_completed=""
+          nohup $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -accel off > emulator.log 2>&1 &
+          sleep 5
+
+      - name: Wait for emulator to boot
+        run: |
           export PATH=$PATH:$ANDROID_HOME/platform-tools
+          boot_completed=""
           until [[ "$boot_completed" == "1" ]]; do
             boot_completed=$($ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-            echo "Boot completed: $boot_completed"
+            echo "Waiting for boot... ($boot_completed)"
             sleep 5
           done
-          echo "Emulator booted successfully."
+          echo "Emulator booted successfully"
           $ANDROID_HOME/platform-tools/adb shell input keyevent 82
 
       - name: Assemble Debug APK
@@ -60,7 +62,7 @@ jobs:
       - name: Run Instrumented Tests
         run: ./gradlew connectedDebugAndroidTest
 
-      - name: Upload Test Results
+      - name: Upload Instrumented Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -73,17 +75,6 @@ jobs:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
-      - name: Grade Test Result
+      - name: Output Emulator Log (if needed)
         if: always()
-        run: |
-          echo "===================="
-          echo "📝 Grading Summary:"
-          REPORT_FILE="app/build/reports/androidTests/connected/index.html"
-          if grep -q "FAILURES" "$REPORT_FILE"; then
-            echo "❌ Some tests failed."
-            echo "Grade: 5/10"
-            exit 1
-          else
-            echo "✅ All tests passed."
-            echo "Grade: 10/10"
-          fi
+        run: cat emulator.log
