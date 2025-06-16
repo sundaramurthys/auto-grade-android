@@ -42,8 +42,17 @@ jobs:
       - name: Start Emulator
         run: |
           nohup $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-boot-anim -no-window -gpu swiftshader_indirect -accel off > emulator.log 2>&1 &
+          echo "Waiting for emulator to boot..."
           $ANDROID_HOME/platform-tools/adb wait-for-device
-          $ANDROID_HOME/platform-tools/adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
+          boot_completed=""
+          export PATH=$PATH:$ANDROID_HOME/platform-tools
+          until [[ "$boot_completed" == "1" ]]; do
+            boot_completed=$($ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            echo "Boot completed: $boot_completed"
+            sleep 5
+          done
+          echo "Emulator booted successfully."
+          $ANDROID_HOME/platform-tools/adb shell input keyevent 82
 
       - name: Assemble Debug APK
         run: ./gradlew assembleDebug
