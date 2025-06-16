@@ -5,12 +5,36 @@ on: [push, pull_request]
 jobs:
   android-instrumented-tests:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      - uses: android-actions/setup-android@v2
-      - run: ./gradlew assembleDebug
-      - run: ./gradlew connectedDebugAndroidTest
+env:
+  JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.15-6/x64
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+steps:
+  - name: Checkout code
+    uses: actions/checkout@v3
+
+  - name: Set up JDK 17
+    uses: actions/setup-java@v3
+    with:
+      distribution: 'temurin'
+      java-version: 17
+
+  - name: Make gradlew executable
+    run: chmod +x ./gradlew
+
+  - name: Download Android SDK packages
+    run: |
+      sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+  - name: Build Debug APK
+    run: ./gradlew assembleDebug
+
+  - name: Run Unit Tests
+    run: ./gradlew testDebugUnitTest
+
+  - name: Upload Build Artifacts
+    uses: actions/upload-artifact@v4
+    with:
+      name: debug-apk
+      path: app/build/outputs/apk/debug/*.apk
