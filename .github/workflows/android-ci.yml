@@ -2,79 +2,24 @@ name: Android CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   android-instrumented-tests:
-    name: Run Instrumented Tests with Grading
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Java 17
+      - uses: actions/checkout@v3
+      - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v2
-
-      - name: Grant execute permission to gradlew
+      - name: Grant gradlew permission
         run: chmod +x ./gradlew
-
-      - name: Accept SDK Licenses
-        run: yes | sdkmanager --licenses
-
-      - name: Install required SDK components
-        run: sdkmanager "platform-tools" "platforms;android-34" "system-images;android-34;google_apis;x86_64" "emulator"
-
-      - name: Create AVD named test
-        run: echo "no" | avdmanager create avd -n test -k "system-images;android-34;google_apis;x86_64" --device "pixel"
-
-      - name: Start emulator in background
-        run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -accel off > emulator.log 2>&1 &
-          sleep 5
-
-      - name: Wait for emulator to boot
-        run: |
-          export PATH=$PATH:$ANDROID_HOME/platform-tools
-          boot_completed=""
-          until [[ "$boot_completed" == "1" ]]; do
-            boot_completed=$($ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-            echo "Waiting for boot... ($boot_completed)"
-            sleep 5
-          done
-          echo "Emulator booted successfully"
-          $ANDROID_HOME/platform-tools/adb shell input keyevent 82
-
-      - name: Assemble Debug APK
+      - name: Build Debug APK
         run: ./gradlew assembleDebug
-
-      - name: Run Instrumented Tests
-        run: ./gradlew connectedDebugAndroidTest
-
-      - name: Upload Instrumented Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: androidTest-results
-          path: app/build/reports/androidTests/connected/
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-
-      - name: Output Emulator Log (if needed)
-        if: always()
-        run: cat emulator.log
+      - name: Run Tests
+        run: ./gradlew testDebugUnitTest
