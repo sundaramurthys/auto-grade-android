@@ -63,3 +63,18 @@ jobs:
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Grade Test Result
+        if: always()
+        run: |
+          echo "===================="
+          echo "📝 Grading Summary:"
+          REPORT_FILE="app/build/reports/androidTests/connected/index.html"
+          if grep -q "FAILURES" "$REPORT_FILE"; then
+            echo "❌ Some tests failed."
+            echo "Grade: 5/10"
+            exit 1
+          else
+            echo "✅ All tests passed."
+            echo "Grade: 10/10"
+          fi
