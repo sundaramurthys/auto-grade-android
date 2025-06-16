@@ -26,19 +26,19 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Create AVD and start emulator
-        run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n Pixel_5 -k "system-images;android-34;google_apis;x86_64" --device "pixel"
-          nohup $ANDROID_HOME/emulator/emulator -avd Pixel_5 -no-audio -no-boot-anim -no-window -gpu swiftshader_indirect -accel off > emulator.log 2>&1 &
-          $ANDROID_HOME/platform-tools/adb wait-for-device
-          export PATH=$PATH:$ANDROID_HOME/platform-tools
-          boot_completed=""
-          until [[ "$boot_completed" == "1" ]]; do
-            boot_completed=$($ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed | tr -d '\r')
-            echo "Waiting for emulator to boot..."
-            sleep 5
-          done
-          echo "Emulator booted"
+      # - name: Create AVD and start emulator
+      #   run: |
+      #     echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n Pixel_5 -k "system-images;android-34;google_apis;x86_64" --device "pixel"
+      #     nohup $ANDROID_HOME/emulator/emulator -avd Pixel_5 -no-audio -no-boot-anim -no-window -gpu swiftshader_indirect -accel off > emulator.log 2>&1 &
+      #     $ANDROID_HOME/platform-tools/adb wait-for-device
+      #     export PATH=$PATH:$ANDROID_HOME/platform-tools
+      #     boot_completed=""
+      #     until [[ "$boot_completed" == "1" ]]; do
+      #       boot_completed=$($ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed | tr -d '\r')
+      #       echo "Waiting for emulator to boot..."
+      #       sleep 5
+      #     done
+      #     echo "Emulator booted"
 
       - name: Grant permissions and unlock screen
         run: |
